@@ -17,3 +17,6 @@ the Behavior Tree asset specification, and mobile visual/audio presentation.
 
 See [Blender GIS city pipeline](Tools/GIS/README.md) for footprint/height-surface
 processing, atlas baking, and cell-local FBX export.
+
+See [mobile vehicles and traffic](Docs/MobileVehiclesAndTraffic.md) for the
+four-wheel Chaos pawn, platform physics budget, and spline-driven ambient ISMs.
