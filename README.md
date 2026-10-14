@@ -29,3 +29,6 @@ approved fictional names required in future code and dialogue.
 
 See [five-act main quest](Docs/MainQuestOutline.md) for Mara Venn's ledger-driven
 rescue story amid the turf war and Alien Stalker invasion.
+
+See [trap house escape sequence](Docs/TrapHouseEscapeSequence.md) for the Act I
+encounter layout, crawlspace pursuit, and interior rendering isolation guidance.
