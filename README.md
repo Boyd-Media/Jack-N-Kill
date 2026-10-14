@@ -11,3 +11,6 @@ See [mobile architecture](Docs/MobileArchitecture.md).
 
 See [combat component integration](Docs/CombatComponent.md) for the timed melee
 state machine, input queue, primitive hit sweeps, and presentation delegates.
+
+See [stalker AI and sanity integration](Docs/StalkerAIAndSanity.md) for perception,
+the Behavior Tree asset specification, and mobile visual/audio presentation.
