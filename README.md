@@ -20,3 +20,6 @@ processing, atlas baking, and cell-local FBX export.
 
 See [mobile vehicles and traffic](Docs/MobileVehiclesAndTraffic.md) for the
 four-wheel Chaos pawn, platform physics budget, and spline-driven ambient ISMs.
+
+See [mobile rendering and lighting](Docs/MobileRenderingAndLighting.md) for the
+filmic post-process preset, Mobile HDR, and supported static-lighting workflows.
