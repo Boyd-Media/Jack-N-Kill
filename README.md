@@ -14,3 +14,6 @@ state machine, input queue, primitive hit sweeps, and presentation delegates.
 
 See [stalker AI and sanity integration](Docs/StalkerAIAndSanity.md) for perception,
 the Behavior Tree asset specification, and mobile visual/audio presentation.
+
+See [Blender GIS city pipeline](Tools/GIS/README.md) for footprint/height-surface
+processing, atlas baking, and cell-local FBX export.
