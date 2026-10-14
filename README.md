@@ -38,3 +38,6 @@ Alien-first targeting, vehicle evacuation, and the eight-agent activation cap.
 
 See [Pro Athletes schedule and Behavior Tree](Docs/ProAthletesScheduleAndBehaviorTree.md)
 for the nine-member roster, weekly routines, and wealth-funded security encounters.
+
+See [Public Order corruption and bribes](Docs/PublicOrderCorruptionAndBribes.md)
+for the officer controller, server-validated payment flow, and client UI bridge.
