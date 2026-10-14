@@ -35,3 +35,6 @@ encounter layout, crawlspace pursuit, and interior rendering isolation guidance.
 
 See [faction StateTree and AI Director](Docs/FactionStateTreeAndAIDirector.md) for
 Alien-first targeting, vehicle evacuation, and the eight-agent activation cap.
+
+See [Pro Athletes schedule and Behavior Tree](Docs/ProAthletesScheduleAndBehaviorTree.md)
+for the nine-member roster, weekly routines, and wealth-funded security encounters.
