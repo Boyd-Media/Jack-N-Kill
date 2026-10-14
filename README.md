@@ -32,3 +32,6 @@ rescue story amid the turf war and Alien Stalker invasion.
 
 See [trap house escape sequence](Docs/TrapHouseEscapeSequence.md) for the Act I
 encounter layout, crawlspace pursuit, and interior rendering isolation guidance.
+
+See [faction StateTree and AI Director](Docs/FactionStateTreeAndAIDirector.md) for
+Alien-first targeting, vehicle evacuation, and the eight-agent activation cap.
