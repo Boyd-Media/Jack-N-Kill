@@ -44,3 +44,6 @@ for the officer controller, server-validated payment flow, and client UI bridge.
 
 See [player metabolism](Docs/PlayerMetabolism.md) for daily body-morph progression,
 sprint penalties, and the melee damage modifier.
+
+See [vehicle radio](Docs/VehicleRadio.md) for imported soundtrack playback,
+Enhanced Input controls, and spatialized cabin/door filtering.

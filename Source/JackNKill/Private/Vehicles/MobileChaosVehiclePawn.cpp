@@ -3,6 +3,15 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Vehicles/MobileVehicleWheels.h"
+#include "Audio/VehicleRadioSubsystem.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
+#include "Sound/SoundBase.h"
 
 AMobileChaosVehiclePawn::AMobileChaosVehiclePawn()
 {
@@ -61,5 +70,130 @@ void AMobileChaosVehiclePawn::ClearDriveInputs()
 void AMobileChaosVehiclePawn::UnPossessed()
 {
     ClearDriveInputs();
+    SetLocalRadioDriver(nullptr);
     Super::UnPossessed();
+}
+
+void AMobileChaosVehiclePawn::BeginPlay()
+{
+    Super::BeginPlay();
+    if (GetNetMode() != NM_DedicatedServer && !RadioPlaylist.IsEmpty())
+    {
+        TArray<USoundBase*> Tracks;
+        for (const TObjectPtr<USoundBase>& Track : RadioPlaylist)
+        {
+            Tracks.Add(Track.Get());
+        }
+        if (!GetWorld()->GetSubsystem<UVehicleRadioSubsystem>()->RegisterVehicle(this, Tracks))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Vehicle radio registration failed: empty playlist or local radio budget reached."));
+        }
+    }
+    RefreshLocalRadioDriver();
+}
+
+void AMobileChaosVehiclePawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+    if (UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+    {
+        if (NextTrackAction)
+        {
+            Input->BindAction(NextTrackAction, ETriggerEvent::Started, this, &AMobileChaosVehiclePawn::NextRadioTrack);
+        }
+        if (PreviousTrackAction)
+        {
+            Input->BindAction(PreviousTrackAction, ETriggerEvent::Started, this, &AMobileChaosVehiclePawn::PreviousRadioTrack);
+        }
+        if (ToggleRadioAction)
+        {
+            Input->BindAction(ToggleRadioAction, ETriggerEvent::Started, this, &AMobileChaosVehiclePawn::ToggleVehicleRadio);
+        }
+    }
+}
+
+void AMobileChaosVehiclePawn::PossessedBy(AController* NewController)
+{
+    Super::PossessedBy(NewController);
+    RefreshLocalRadioDriver();
+}
+
+void AMobileChaosVehiclePawn::PawnClientRestart()
+{
+    Super::PawnClientRestart();
+    RefreshLocalRadioDriver();
+}
+
+void AMobileChaosVehiclePawn::OnRep_Controller()
+{
+    Super::OnRep_Controller();
+    RefreshLocalRadioDriver();
+}
+
+void AMobileChaosVehiclePawn::RefreshLocalRadioDriver()
+{
+    APlayerController* Player = Cast<APlayerController>(GetController());
+    SetLocalRadioDriver(Player && Player->IsLocalController() ? Player : nullptr);
+}
+
+void AMobileChaosVehiclePawn::SetLocalRadioDriver(APlayerController* Player)
+{
+    if (LocalRadioDriver.Get() != Player)
+    {
+        if (LocalRadioDriver.IsValid() && VehicleInputMapping)
+        {
+            if (ULocalPlayer* Local = LocalRadioDriver->GetLocalPlayer())
+            {
+                if (UEnhancedInputLocalPlayerSubsystem* Input = Local->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+                {
+                    Input->RemoveMappingContext(VehicleInputMapping);
+                }
+            }
+        }
+        LocalRadioDriver = Player;
+        if (Player && VehicleInputMapping)
+        {
+            if (ULocalPlayer* Local = Player->GetLocalPlayer())
+            {
+                if (UEnhancedInputLocalPlayerSubsystem* Input = Local->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+                {
+                    Input->AddMappingContext(VehicleInputMapping, 1);
+                }
+            }
+        }
+    }
+    if (GetWorld())
+    {
+        GetWorld()->GetSubsystem<UVehicleRadioSubsystem>()->SetListenerInside(this, Player != nullptr);
+    }
+}
+
+void AMobileChaosVehiclePawn::NextRadioTrack()
+{
+    if (GetWorld())
+    {
+        GetWorld()->GetSubsystem<UVehicleRadioSubsystem>()->NextTrack(this);
+    }
+}
+
+void AMobileChaosVehiclePawn::PreviousRadioTrack()
+{
+    if (GetWorld())
+    {
+        GetWorld()->GetSubsystem<UVehicleRadioSubsystem>()->PreviousTrack(this);
+    }
+}
+
+void AMobileChaosVehiclePawn::ToggleVehicleRadio()
+{
+    if (GetWorld())
+    {
+        GetWorld()->GetSubsystem<UVehicleRadioSubsystem>()->ToggleRadio(this);
+    }
+}
+
+void AMobileChaosVehiclePawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    SetLocalRadioDriver(nullptr);
+    Super::EndPlay(EndPlayReason);
 }
