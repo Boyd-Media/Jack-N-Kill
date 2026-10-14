@@ -108,6 +108,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void CancelCombat();
 
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Combat|Modifiers")
+    void SetMetabolismDamageMultiplier(float Multiplier);
+
+    UFUNCTION(BlueprintPure, Category = "Combat|Modifiers")
+    float GetMetabolismDamageMultiplier() const { return MetabolismDamageMultiplier; }
+
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
         FActorComponentTickFunction* ThisTickFunction) override;
@@ -124,6 +130,7 @@ private:
     uint32 StateRevision = 0;
     FTimerHandle StateTimer;
     FMeleeAttackDefinition CurrentAttack;
+    float MetabolismDamageMultiplier = 1.0f;
     TArray<FBufferedAttack> InputQueue;
     TSet<TWeakObjectPtr<AActor>> HitActors;
     TWeakObjectPtr<USceneComponent> TraceSource;

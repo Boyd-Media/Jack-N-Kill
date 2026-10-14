@@ -106,6 +106,8 @@ bool UCombatComponent::StartAttack(FName AttackId)
         return false;
     }
     CurrentAttack = *Definition;
+    // Snapshot this modifier once per attack; never mutate the authored definition.
+    CurrentAttack.Damage *= MetabolismDamageMultiplier;
     HitActors.Reset();
     EnterState(ECombatState::Startup, CurrentAttack.StartupSeconds);
     return true;
@@ -207,6 +209,14 @@ void UCombatComponent::CancelCombat()
     InputQueue.Reset();
     HitActors.Reset();
     EnterState(ECombatState::Idle);
+}
+
+void UCombatComponent::SetMetabolismDamageMultiplier(float Multiplier)
+{
+    if (IsValid(GetOwner()) && GetOwner()->HasAuthority() && FMath::IsFinite(Multiplier))
+    {
+        MetabolismDamageMultiplier = FMath::Clamp(Multiplier, 0.0f, 3.0f);
+    }
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType,

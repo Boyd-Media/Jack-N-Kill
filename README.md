@@ -41,3 +41,6 @@ for the nine-member roster, weekly routines, and wealth-funded security encounte
 
 See [Public Order corruption and bribes](Docs/PublicOrderCorruptionAndBribes.md)
 for the officer controller, server-validated payment flow, and client UI bridge.
+
+See [player metabolism](Docs/PlayerMetabolism.md) for daily body-morph progression,
+sprint penalties, and the melee damage modifier.
