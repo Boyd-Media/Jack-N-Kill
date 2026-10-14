@@ -50,3 +50,6 @@ Enhanced Input controls, and spatialized cabin/door filtering.
 
 See [offline-first co-op networking](Docs/OfflineAndCoopNetworking.md) for the
 menu travel subsystem, replicated player template, and server-authoritative melee.
+
+See [adaptive AI Director and thunderstorms](Docs/AIDirectorAndStorms.md) for
+stress-driven encounters, shared admission limits, and storm gameplay modifiers.

@@ -5,6 +5,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
@@ -51,6 +53,10 @@ void AStalkerAIController::OnPossess(APawn* InPawn)
     {
         return;
     }
+    if (const ACharacter* Character = Cast<ACharacter>(InPawn))
+    {
+        BaseMovementSpeed = Character->GetCharacterMovement()->MaxWalkSpeed;
+    }
     if (BehaviorTreeAsset)
     {
         RunBehaviorTree(BehaviorTreeAsset);
@@ -60,6 +66,10 @@ void AStalkerAIController::OnPossess(APawn* InPawn)
 
 void AStalkerAIController::ResetKnowledge()
 {
+    if (ACharacter* Character = Cast<ACharacter>(GetPawn()))
+    {
+        Character->GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed;
+    }
     ClearFocus(EAIFocusPriority::Gameplay);
     InvestigationExpiresAt = 0.0;
     if (UBlackboardComponent* BB = GetBlackboardComponent())
@@ -82,6 +92,10 @@ void AStalkerAIController::SetTrackedPlayer(APawn* Player)
 
 void AStalkerAIController::OnUnPossess()
 {
+    if (ACharacter* Character = Cast<ACharacter>(GetPawn()))
+    {
+        Character->GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed;
+    }
     ResetKnowledge();
     TrackedPlayer.Reset();
     Super::OnUnPossess();
@@ -117,7 +131,7 @@ void AStalkerAIController::OnTargetUpdated(AActor* Actor, FAIStimulus Stimulus)
                 BB->SetValueAsVector(StalkerKeys::InvestigationLocation, Stimulus.StimulusLocation);
             }
             BB->SetValueAsBool(StalkerKeys::HasInvestigation, true);
-            InvestigationExpiresAt = GetWorld()->GetTimeSeconds() + 8.0;
+            InvestigationExpiresAt = GetWorld()->GetTimeSeconds() + 8.0 * StormAggression;
         }
     }
     else if (bHearing && Stimulus.WasSuccessfullySensed()
@@ -125,7 +139,7 @@ void AStalkerAIController::OnTargetUpdated(AActor* Actor, FAIStimulus Stimulus)
     {
         BB->SetValueAsVector(StalkerKeys::InvestigationLocation, Stimulus.StimulusLocation);
         BB->SetValueAsBool(StalkerKeys::HasInvestigation, true);
-        InvestigationExpiresAt = GetWorld()->GetTimeSeconds() + 8.0;
+        InvestigationExpiresAt = GetWorld()->GetTimeSeconds() + 8.0 * StormAggression;
     }
     UpdateDistanceBudget();
 }
@@ -144,6 +158,14 @@ void AStalkerAIController::UpdateDistanceBudget()
     SetActorTickInterval(Interval);
 }
 
+void AStalkerAIController::SetStormAggression(float Multiplier)
+{
+    if (HasAuthority() && GetNetMode() != NM_Client && FMath::IsFinite(Multiplier))
+    {
+        StormAggression = FMath::Clamp(Multiplier, 1.0f, 1.5f);
+    }
+}
+
 void AStalkerAIController::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
@@ -158,6 +180,12 @@ void AStalkerAIController::Tick(float DeltaSeconds)
         return;
     }
     UBlackboardComponent* BB = GetBlackboardComponent();
+    if (ACharacter* Character = Cast<ACharacter>(GetPawn()))
+    {
+        const bool bPursuing = BB && BB->GetValueAsBool(StalkerKeys::HasSight);
+        const float SpeedScale = bPursuing ? FMath::Lerp(1.0f, 1.2f, (StormAggression - 1.0f) / 0.5f) : 1.0f;
+        Character->GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed * SpeedScale;
+    }
     if (BB && BB->GetValueAsBool(StalkerKeys::HasInvestigation)
         && GetWorld()->GetTimeSeconds() >= InvestigationExpiresAt)
     {

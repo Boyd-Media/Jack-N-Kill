@@ -24,6 +24,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetTrackedPlayer(APawn* Player);
 
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "AI|Weather")
+    float StormAggression = 1.0f;
+
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "AI|Weather")
+    void SetStormAggression(float Multiplier);
+
 protected:
     virtual void OnPossess(APawn* InPawn) override;
     virtual void OnUnPossess() override;
@@ -41,6 +47,7 @@ private:
 
     TWeakObjectPtr<APawn> TrackedPlayer;
     double InvestigationExpiresAt = 0.0;
+    float BaseMovementSpeed = 600.0f;
 
     UFUNCTION()
     void OnTargetUpdated(AActor* Actor, FAIStimulus Stimulus);

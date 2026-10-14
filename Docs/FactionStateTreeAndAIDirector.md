@@ -9,6 +9,12 @@ prevents more than eight active agents appearing on screen during camera turns.
 This document is a Blueprint architecture specification, not serialized Blueprint
 or StateTree assets. Runtime behavior and performance have not been validated.
 
+The native AMobileAIDirector now supplies admission and adaptive encounter logic;
+derive BP_AIDirector from it rather than maintaining an independent cap. See
+[Director and storm integration](AIDirectorAndStorms.md). Multi-agent atomic
+reservations, vehicle seats, and the faction StateTree assets remain integration
+work; the native implementation currently exposes single-agent reservation calls.
+
 ## Blueprint classes
 
 | Blueprint | Responsibility |
