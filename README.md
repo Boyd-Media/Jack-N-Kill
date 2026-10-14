@@ -23,3 +23,6 @@ four-wheel Chaos pawn, platform physics budget, and spline-driven ambient ISMs.
 
 See [mobile rendering and lighting](Docs/MobileRenderingAndLighting.md) for the
 filmic post-process preset, Mobile HDR, and supported static-lighting workflows.
+
+See [parody translation dictionary](Docs/ParodyTranslationDictionary.md) for the
+approved fictional names required in future code and dialogue.
