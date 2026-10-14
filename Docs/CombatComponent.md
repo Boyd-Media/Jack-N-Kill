@@ -71,10 +71,11 @@ or destruction.
 
 ## Scope and validation
 
-This is a local gameplay component, not a replicated/predicted combat system.
-For multiplayer, validate requests and apply damage on the server; provide a
-separate local cosmetic feedback path. Do not use cosmetic-only animation socket
-updates as an unvalidated server hit source.
+The component now supports offline play and server-authoritative co-op; see
+[networking integration](OfflineAndCoopNetworking.md). Owning clients submit an
+attack ID, authority performs traces/damage, and clients receive replicated phase
+state plus cosmetic feedback. It does not implement client prediction. Server
+animation must evaluate weapon sockets independently of cosmetic client copies.
 
 The repository has no .uproject or Unreal toolchain. Compilation, UHT validation,
 collision behavior, timer/animation alignment, and mobile profiling remain

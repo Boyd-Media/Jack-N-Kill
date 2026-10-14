@@ -6,6 +6,9 @@
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/GameStateBase.h"
+#include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
 namespace
@@ -32,6 +35,7 @@ namespace
 
 UCombatComponent::UCombatComponent()
 {
+    SetIsReplicatedByDefault(true);
     PrimaryComponentTick.bCanEverTick = true;
     PrimaryComponentTick.bStartWithTickEnabled = false;
     PrimaryComponentTick.TickGroup = TG_PostPhysics;
@@ -40,6 +44,10 @@ UCombatComponent::UCombatComponent()
 
 void UCombatComponent::SetTraceSource(USceneComponent* Source, FName SocketName)
 {
+    if (!HasCombatAuthority())
+    {
+        return;
+    }
     if (TraceSource.IsValid())
     {
         RemoveTickPrerequisiteComponent(TraceSource.Get());
@@ -75,9 +83,51 @@ bool UCombatComponent::ReadTraceTransform(FTransform& OutTransform) const
 
 bool UCombatComponent::RequestAttack(FName AttackId)
 {
+    if (!GetWorld() || !IsValid(GetOwner()) || AttackId.IsNone())
+    {
+        return false;
+    }
+    if (HasCombatAuthority())
+    {
+        return RequestAttackAuthoritative(AttackId);
+    }
+    const APawn* Pawn = Cast<APawn>(GetOwner());
+    if (GetWorld()->GetNetMode() != NM_Client || !Pawn || !Pawn->IsLocallyControlled()
+        || !Pawn->IsPlayerControlled() || !Pawn->GetIsReplicated() || !GetIsReplicated()
+        || !Attacks.Contains(AttackId) || GetWorld()->GetTimeSeconds() < NextLocalRequestTime)
+    {
+        return false;
+    }
+    NextLocalRequestTime = GetWorld()->GetTimeSeconds() + 0.05;
+    ServerRequestAttack(AttackId);
+    return true;
+}
+
+bool UCombatComponent::HasCombatAuthority() const
+{
+    return GetWorld() && IsValid(GetOwner())
+        && GetWorld()->GetNetMode() != NM_Client && GetOwner()->HasAuthority();
+}
+
+void UCombatComponent::ServerRequestAttack_Implementation(FName AttackId)
+{
+    const APawn* Pawn = Cast<APawn>(GetOwner());
+    if (!HasCombatAuthority() || GetWorld()->GetNetMode() == NM_Standalone
+        || !Pawn || !Pawn->IsPlayerControlled() || AttackId.IsNone()
+        || GetWorld()->GetTimeSeconds() < NextRemoteRequestTime)
+    {
+        return;
+    }
+    NextRemoteRequestTime = GetWorld()->GetTimeSeconds() + 0.05;
+    // UE enforces ownership. Client submits no target, damage or hit vectors.
+    RequestAttackAuthoritative(AttackId);
+}
+
+bool UCombatComponent::RequestAttackAuthoritative(FName AttackId)
+{
     const FMeleeAttackDefinition* Definition = Attacks.Find(AttackId);
     FTransform Transform;
-    if (!GetWorld() || !Definition || !IsAttackValid(*Definition)
+    if (!HasCombatAuthority() || !Definition || !IsAttackValid(*Definition)
         || !ReadTraceTransform(Transform)
         || State == ECombatState::HitStun || State == ECombatState::BlockStun)
     {
@@ -101,7 +151,7 @@ bool UCombatComponent::StartAttack(FName AttackId)
 {
     const FMeleeAttackDefinition* Definition = Attacks.Find(AttackId);
     FTransform Transform;
-    if (!Definition || !IsAttackValid(*Definition) || !ReadTraceTransform(Transform))
+    if (!HasCombatAuthority() || !Definition || !IsAttackValid(*Definition) || !ReadTraceTransform(Transform))
     {
         return false;
     }
@@ -109,14 +159,22 @@ bool UCombatComponent::StartAttack(FName AttackId)
     // Snapshot this modifier once per attack; never mutate the authored definition.
     CurrentAttack.Damage *= MetabolismDamageMultiplier;
     HitActors.Reset();
+    NetworkState.AttackId = AttackId;
+    NetworkState.AttackStartServerTime = GetWorld()->GetTimeSeconds();
+    ++NetworkState.AttackSequence;
+    const uint32 ExpectedRevision = StateRevision + 1;
     EnterState(ECombatState::Startup, CurrentAttack.StartupSeconds);
+    if (StateRevision == ExpectedRevision)
+    {
+        OnAttackStarted.Broadcast(AttackId, 0.0f);
+    }
     return true;
 }
 
 void UCombatComponent::EnterState(ECombatState NewState, float DurationSeconds)
 {
     UWorld* World = GetWorld();
-    if (!World)
+    if (!World || !HasCombatAuthority())
     {
         return;
     }
@@ -124,6 +182,14 @@ void UCombatComponent::EnterState(ECombatState NewState, float DurationSeconds)
     const ECombatState PreviousState = State;
     State = NewState;
     ++StateRevision;
+    NetworkState.State = State;
+    NetworkState.PhaseStartServerTime = World->GetTimeSeconds();
+    NetworkState.PhaseDuration = DurationSeconds;
+    NetworkState.StateSequence = StateRevision;
+    if (World->GetNetMode() != NM_Standalone && GetOwner()->GetIsReplicated())
+    {
+        GetOwner()->ForceNetUpdate();
+    }
     SetComponentTickEnabled(State == ECombatState::Active);
     if (DurationSeconds > 0.0f)
     {
@@ -136,6 +202,10 @@ void UCombatComponent::EnterState(ECombatState NewState, float DurationSeconds)
 
 void UCombatComponent::AdvanceState()
 {
+    if (!HasCombatAuthority())
+    {
+        return;
+    }
     if (State == ECombatState::Startup)
     {
         FTransform Transform;
@@ -194,7 +264,7 @@ void UCombatComponent::ConsumeBufferedAttack()
 
 void UCombatComponent::ApplyStun(ECombatState StunState, float DurationSeconds)
 {
-    if ((StunState != ECombatState::HitStun && StunState != ECombatState::BlockStun)
+    if (!HasCombatAuthority() || (StunState != ECombatState::HitStun && StunState != ECombatState::BlockStun)
         || !IsPositiveFinite(DurationSeconds))
     {
         return;
@@ -206,6 +276,10 @@ void UCombatComponent::ApplyStun(ECombatState StunState, float DurationSeconds)
 
 void UCombatComponent::CancelCombat()
 {
+    if (!HasCombatAuthority())
+    {
+        return;
+    }
     InputQueue.Reset();
     HitActors.Reset();
     EnterState(ECombatState::Idle);
@@ -213,7 +287,7 @@ void UCombatComponent::CancelCombat()
 
 void UCombatComponent::SetMetabolismDamageMultiplier(float Multiplier)
 {
-    if (IsValid(GetOwner()) && GetOwner()->HasAuthority() && FMath::IsFinite(Multiplier))
+    if (HasCombatAuthority() && FMath::IsFinite(Multiplier))
     {
         MetabolismDamageMultiplier = FMath::Clamp(Multiplier, 0.0f, 3.0f);
     }
@@ -223,7 +297,7 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    if (State == ECombatState::Active)
+    if (HasCombatAuthority() && State == ECombatState::Active)
     {
         TraceActiveHit();
     }
@@ -234,7 +308,7 @@ void UCombatComponent::TraceActiveHit()
     UWorld* World = GetWorld();
     AActor* Owner = GetOwner();
     FTransform Transform;
-    if (State != ECombatState::Active || !World || !IsValid(Owner))
+    if (!HasCombatAuthority() || State != ECombatState::Active || !World || !IsValid(Owner))
     {
         return;
     }
@@ -290,7 +364,48 @@ void UCombatComponent::TraceActiveHit()
     const TSubclassOf<UCameraShakeBase> Shake = CurrentAttack.CameraShake;
     HitActors.Add(TargetKey);
     IBaseDamageInterface::Execute_ReceiveDamageHit(Target, Hit);
-    OnImpactFeedback.Broadcast(IsValid(Target) ? Target : nullptr, Hit, Hitstop, Shake);
+    if (World->GetNetMode() == NM_Standalone)
+    {
+        OnImpactFeedback.Broadcast(IsValid(Target) ? Target : nullptr, Hit, Hitstop, Shake);
+    }
+    else if (Owner->GetIsReplicated() && GetIsReplicated())
+    {
+        MulticastImpactFeedback(IsValid(Target) ? Target : nullptr, Hit, Hitstop, Shake);
+    }
+}
+
+void UCombatComponent::MulticastImpactFeedback_Implementation(AActor* Target,
+    FBaseDamageHit Hit, float HitstopSeconds, TSubclassOf<UCameraShakeBase> CameraShake)
+{
+    if (GetWorld() && GetWorld()->GetNetMode() != NM_DedicatedServer)
+    {
+        OnImpactFeedback.Broadcast(Target, Hit, HitstopSeconds, CameraShake);
+    }
+}
+
+void UCombatComponent::OnRep_NetworkState()
+{
+    const ECombatState Previous = State;
+    State = NetworkState.State;
+    SetComponentTickEnabled(false);
+    if (NetworkState.AttackSequence != LastPresentedAttackSequence)
+    {
+        LastPresentedAttackSequence = NetworkState.AttackSequence;
+        if (State == ECombatState::Startup || State == ECombatState::Active || State == ECombatState::Recovery)
+        {
+            const AGameStateBase* GameState = GetWorld()->GetGameState();
+            const double Now = GameState ? GameState->GetServerWorldTimeSeconds() : GetWorld()->GetTimeSeconds();
+            const float Elapsed = static_cast<float>(FMath::Max(0.0, Now - NetworkState.AttackStartServerTime));
+            OnAttackStarted.Broadcast(NetworkState.AttackId, Elapsed);
+        }
+    }
+    OnStateChanged.Broadcast(Previous, State);
+}
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(UCombatComponent, NetworkState);
 }
 
 void UCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)

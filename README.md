@@ -47,3 +47,6 @@ sprint penalties, and the melee damage modifier.
 
 See [vehicle radio](Docs/VehicleRadio.md) for imported soundtrack playback,
 Enhanced Input controls, and spatialized cabin/door filtering.
+
+See [offline-first co-op networking](Docs/OfflineAndCoopNetworking.md) for the
+menu travel subsystem, replicated player template, and server-authoritative melee.
