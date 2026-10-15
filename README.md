@@ -53,3 +53,6 @@ menu travel subsystem, replicated player template, and server-authoritative mele
 
 See [adaptive AI Director and thunderstorms](Docs/AIDirectorAndStorms.md) for
 stress-driven encounters, shared admission limits, and storm gameplay modifiers.
+
+See [inventory and world persistence](Docs/InventoryAndWorldPersistence.md) for
+compact door/house/player saves, asynchronous storage, and bounded inventory.
