@@ -1,11 +1,15 @@
 # Jack N Kill
 
+Start with [gameplay optimization and validation](Docs/GameplayOptimization.md)
+for build instructions, changes, tests, and remaining engine integration gates.
+
 UE 5.6+ mobile third-person open-world game architecture for melee combat,
 horror survival, and vehicles.
 
-This repository currently contains design documentation and integration stubs,
-not a generated Unreal project. Create a UE 5.6+ C++ project named `JackNKill`
-before integrating these sources. No Unreal build or device validation has run.
+This repository contains a UE 5.6 project descriptor, runtime module, game/editor
+build targets, gameplay sources, and design specifications. Content assets and a
+playable map are still required. Unreal compilation and device validation have
+not run; portable production-rule and Blender pipeline tests are available.
 
 See [mobile architecture](Docs/MobileArchitecture.md).
 

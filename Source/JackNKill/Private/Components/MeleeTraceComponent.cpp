@@ -13,12 +13,18 @@ UMeleeTraceComponent::UMeleeTraceComponent()
 
 void UMeleeTraceComponent::BeginAttackWindow()
 {
+    if (!GetWorld() || GetWorld()->GetNetMode() == NM_Client || !IsValid(GetOwner()) || !GetOwner()->HasAuthority())
+    {
+        return;
+    }
+    ++WindowRevision;
     HitActors.Reset();
     bAttackWindowOpen = true;
 }
 
 void UMeleeTraceComponent::EndAttackWindow()
 {
+    ++WindowRevision;
     bAttackWindowOpen = false;
     HitActors.Reset();
 }
@@ -30,6 +36,7 @@ void UMeleeTraceComponent::SweepAttack(const FVector& StartWS,
     UWorld* World = GetWorld();
     AActor* Owner = GetOwner();
     if (bSweepInProgress || !bAttackWindowOpen || !World || !IsValid(Owner)
+        || World->GetNetMode() == NM_Client || !Owner->HasAuthority()
         || !FMath::IsFinite(Radius) || Radius <= 0.0f
         || StartWS.ContainsNaN() || EndWS.ContainsNaN())
     {
@@ -37,6 +44,7 @@ void UMeleeTraceComponent::SweepAttack(const FVector& StartWS,
     }
 
     TGuardValue<bool> SweepGuard(bSweepInProgress, true);
+    const uint32 Revision = WindowRevision;
     FCollisionQueryParams Params(SCENE_QUERY_STAT(JNKMeleeSweep), false);
     Params.AddIgnoredActor(Owner);
     if (IsValid(HitTemplate.Attacker.Get()))
@@ -55,7 +63,7 @@ void UMeleeTraceComponent::SweepAttack(const FVector& StartWS,
 
     for (const FHitResult& Contact : SweepResults)
     {
-        if (!bAttackWindowOpen)
+        if (!bAttackWindowOpen || Revision != WindowRevision)
         {
             break;
         }
@@ -85,7 +93,7 @@ void UMeleeTraceComponent::SweepAttack(const FVector& StartWS,
                 - Hit.Attacker->GetActorLocation()).GetSafeNormal();
         }
         if (IBaseDamageInterface::Execute_CanReceiveDamageHit(Target, Hit)
-            && IsValid(Target))
+            && IsValid(Target) && bAttackWindowOpen && Revision == WindowRevision)
         {
             HitActors.Add(TargetKey);
             IBaseDamageInterface::Execute_ReceiveDamageHit(Target, Hit);

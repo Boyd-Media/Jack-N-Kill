@@ -11,9 +11,9 @@ or StateTree assets. Runtime behavior and performance have not been validated.
 
 The native AMobileAIDirector now supplies admission and adaptive encounter logic;
 derive BP_AIDirector from it rather than maintaining an independent cap. See
-[Director and storm integration](AIDirectorAndStorms.md). Multi-agent atomic
-reservations, vehicle seats, and the faction StateTree assets remain integration
-work; the native implementation currently exposes single-agent reservation calls.
+[Director and storm integration](AIDirectorAndStorms.md). RequestAgentSlots now
+provides all-or-nothing squad reservations. Vehicle seats and faction StateTree
+assets remain integration work.
 
 ## Blueprint classes
 

@@ -2,9 +2,9 @@
 
 ## Setup
 
-Create a UE C++ project with the JackNKill module. Ensure its Build.cs declares
-Core, CoreUObject, and Engine dependencies. These source files are not a complete
-standalone Unreal project.
+Open JackNKill.uproject with UE 5.6+. The supplied module declares the required
+dependencies. Character assets, attack definitions and a playable map are still
+required.
 
 Add UCombatComponent to your character. Populate Attacks with named definitions
 such as Light1 and Light2. Call SetTraceSource with a weapon scene component or
@@ -29,8 +29,9 @@ after the specified duration. CancelCombat clears pending input and returns to
 Idle. Recovery completion consumes the oldest unexpired valid attack.
 
 Only Active enables component ticking and collision queries. Startup, Recovery,
-and stun transitions use world timers. A final Active sample runs before Recovery
-to cover short windows. Timing is quantized by game frames; this is not subframe
+and stun transitions use world timers. The opening Active pose is sampled
+immediately; samples after its deadline are rejected, including after a hitch.
+Timing is quantized by game frames; this is not subframe
 animation reconstruction. Durations use world game time, including global time
 dilation. Input expiration uses the same clock.
 
@@ -44,7 +45,7 @@ attack to avoid tracing between unrelated sample positions.
 SweepSingleByChannel uses a sphere or capsule from the previous socket position
 to its current position. A stationary sample still queries overlaps. Capsules
 use the current socket rotation; sweeps do not continuously interpolate rotation.
-This is one sample per component tick, plus the final Active sample. It does not
+This is one sample per live component tick, plus the opening Active sample. It does not
 reconstruct a curved blade arc. Add bounded multi-point sampling if long or fast
 weapons need it, and measure the resulting query budget on devices.
 
@@ -77,7 +78,7 @@ attack ID, authority performs traces/damage, and clients receive replicated phas
 state plus cosmetic feedback. It does not implement client prediction. Server
 animation must evaluate weapon sockets independently of cosmetic client copies.
 
-The repository has no .uproject or Unreal toolchain. Compilation, UHT validation,
+Project scaffolding exists, but the Unreal toolchain is unavailable. Compilation, UHT validation,
 collision behavior, timer/animation alignment, and mobile profiling remain
 unverified. In an Unreal project, test idle/stun trace suppression, buffer expiry
 and capacity, chained recovery, one hit per target, interruption during Active,

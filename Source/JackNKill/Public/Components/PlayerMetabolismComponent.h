@@ -121,5 +121,5 @@ private:
 
     void CompleteDay();
     void ApplyBodyState();
-    bool CanChangeState() const;
+    bool CanChangeState(bool bRestore = false) const;
 };

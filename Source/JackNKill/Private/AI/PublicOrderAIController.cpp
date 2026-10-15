@@ -57,6 +57,9 @@ void APublicOrderAIController::ReportCrime(FGuid CrimeId, APawn* Suspect,
     State = EPublicOrderState::Pursuing;
     SetActorTickEnabled(true);
     NextMoveRetryAt = 0.0;
+    NextBribeRetryAt = 0.0;
+    PursuitDeadline = GetWorld()->GetTimeSeconds()
+        + (FMath::IsFinite(MaxPursuitSeconds) ? FMath::Clamp(MaxPursuitSeconds, 1.0f, 120.0f) : 30.0f);
     SetFocus(Suspect);
 }
 
@@ -89,20 +92,25 @@ void APublicOrderAIController::Tick(float DeltaSeconds)
     {
         return;
     }
+    if (GetWorld()->GetTimeSeconds() >= PursuitDeadline)
+    {
+        ClearEncounter();
+        return;
+    }
     const float ActionRange = bForceAllowed ? ForceRangeCm : ApproachDistanceCm;
     if (FVector::DistSquared(Suspect->GetActorLocation(), OfficerPawn->GetActorLocation())
-        <= FMath::Square(ActionRange))
+        <= FMath::Square(ActionRange) && LineOfSightTo(Suspect))
     {
         StopMovement();
-        if (CorruptionLevel >= 0.5f)
+        if (CorruptionLevel >= 0.5f && GetWorld()->GetTimeSeconds() >= NextBribeRetryAt)
         {
             StartBribePrompt();
         }
-        else if (bForceAllowed)
+        else if (CorruptionLevel < 0.5f && bForceAllowed)
         {
             BecomeHostile();
         }
-        else
+        else if (CorruptionLevel < 0.5f)
         {
             State = EPublicOrderState::Arresting;
             OnArrestRequested.Broadcast(Suspect);
@@ -111,7 +119,8 @@ void APublicOrderAIController::Tick(float DeltaSeconds)
     else if (GetWorld()->GetTimeSeconds() >= NextMoveRetryAt)
     {
         // Moving targets are tracked by path following. Retry at a bounded rate.
-        MoveToActor(Suspect, ActionRange * 0.75f, true);
+        // A large firing radius must not make path following stop behind a wall.
+        MoveToActor(Suspect, ApproachDistanceCm * 0.75f, true);
         NextMoveRetryAt = GetWorld()->GetTimeSeconds() + 2.0;
     }
 }
@@ -123,7 +132,8 @@ void APublicOrderAIController::StartBribePrompt()
         ? Cast<APublicOrderPlayerController>(Suspect->GetController()) : nullptr;
     if (!Player)
     {
-        BecomeHostile();
+        UE_LOG(LogTemp, Warning, TEXT("Bribe encounter cancelled: player controller lacks the UI bridge."));
+        ClearEncounter();
         return;
     }
     State = EPublicOrderState::AwaitingBribe;
@@ -134,7 +144,11 @@ void APublicOrderAIController::StartBribePrompt()
         &APublicOrderAIController::OnBribeExpired, BribeTimeoutSeconds, false);
     if (!Player->BeginBribePrompt(this, ActiveBribeId, BribeCredits, BribeTimeoutSeconds))
     {
-        BecomeHostile();
+        // Another officer may already own this player's prompt. That is not a
+        // refusal: wait briefly rather than punish an unavailable UI channel.
+        ClosePrompt(false);
+        State = EPublicOrderState::Pursuing;
+        NextBribeRetryAt = GetWorld()->GetTimeSeconds() + 1.0;
     }
 }
 

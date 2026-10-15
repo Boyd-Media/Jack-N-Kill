@@ -74,5 +74,5 @@ samples. It reuses query storage and deduplicates targets per attack window.
 
 ## Validation status
 
-Sources and profiles are integration stubs. There is no .uproject, Unreal
-toolchain, cooked build, or physical-device test result in this repository yet.
+Project/module scaffolding is supplied alongside the integration sources. There
+is no Unreal toolchain, cooked build, or physical-device test result here yet.

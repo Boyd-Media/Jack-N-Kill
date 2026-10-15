@@ -2,6 +2,7 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Net/UnrealNetwork.h"
+#include "World/PersistenceAccess.h"
 
 ULightweightInventoryComponent::ULightweightInventoryComponent()
 {
@@ -9,9 +10,9 @@ ULightweightInventoryComponent::ULightweightInventoryComponent()
     SetIsReplicatedByDefault(true);
 }
 
-bool ULightweightInventoryComponent::CanMutate() const
+bool ULightweightInventoryComponent::CanMutate(bool bRestore) const
 {
-    return GetWorld() && GetWorld()->GetNetMode() != NM_Client
+    return JNK::CanMutateDuringPersistence(GetWorld(), bRestore)
         && IsValid(GetOwner()) && GetOwner()->HasAuthority();
 }
 
@@ -106,7 +107,7 @@ bool ULightweightInventoryComponent::RemoveItem(FName ItemId, int32 Quantity)
 
 bool ULightweightInventoryComponent::RestoreSnapshot(const TArray<FInventoryStack>& Snapshot)
 {
-    if (!CanMutate() || !ValidateStacks(Snapshot))
+    if (!CanMutate(true) || !ValidateStacks(Snapshot))
     {
         return false;
     }

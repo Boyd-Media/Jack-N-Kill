@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Systems/GameplayRules.h"
 #include "LightweightInventoryComponent.generated.h"
 
 USTRUCT(BlueprintType)
@@ -21,8 +22,8 @@ class JACKNKILL_API ULightweightInventoryComponent : public UActorComponent
     GENERATED_BODY()
 public:
     ULightweightInventoryComponent();
-    static constexpr int32 MaxStacks = 64;
-    static constexpr int32 MaxQuantity = 10000;
+    static constexpr int32 MaxStacks = JNK::Rules::MaxInventoryStacks;
+    static constexpr int32 MaxQuantity = JNK::Rules::MaxItemQuantity;
     static bool IsValidItemId(FName Id);
     static bool ValidateStacks(const TArray<FInventoryStack>& Stacks);
 
@@ -44,7 +45,7 @@ public:
 private:
     UPROPERTY(ReplicatedUsing = OnRep_Items)
     TArray<FInventoryStack> Items;
-    bool CanMutate() const;
+    bool CanMutate(bool bRestore = false) const;
     UFUNCTION()
     void OnRep_Items();
 };

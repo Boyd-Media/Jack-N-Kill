@@ -41,6 +41,10 @@ void ATrafficManager::BeginPlay()
 
 void ATrafficManager::SetTrackedPlayer(APawn* Player)
 {
+    if (TrackedPlayer.Get() == Player)
+    {
+        return;
+    }
     TrackedPlayer = Player;
     ClearTraffic();
 }
@@ -142,7 +146,7 @@ void ATrafficManager::Tick(float DeltaSeconds)
     Super::Tick(DeltaSeconds);
     if (!TrackedPlayer.IsValid() || !TrafficInstances->GetStaticMesh())
     {
-        if (!Cars.IsEmpty())
+        if (!Cars.IsEmpty() || TrafficInstances->GetInstanceCount() > 0)
         {
             ClearTraffic();
         }

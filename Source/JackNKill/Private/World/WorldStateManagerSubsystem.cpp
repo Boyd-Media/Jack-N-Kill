@@ -81,10 +81,15 @@ bool UWorldStateManagerSubsystem::BindPlayerComponents(ULightweightInventoryComp
 
 bool UWorldStateManagerSubsystem::ApplyPendingPlayer()
 {
+    if (bApplyingPlayerRestore)
+    {
+        return false;
+    }
     if (!bPendingPlayerRestore || !PlayerInventory.IsValid() || !PlayerMetabolism.IsValid())
     {
         return true;
     }
+    TGuardValue<bool> RestoreGuard(bApplyingPlayerRestore, true);
     if (!PlayerMetabolism->RestoreSnapshot(LoadedMetabolism)
         || !PlayerInventory->RestoreSnapshot(LoadedInventory))
     {
@@ -98,7 +103,8 @@ bool UWorldStateManagerSubsystem::ApplyPendingPlayer()
 bool UWorldStateManagerSubsystem::SaveAsync(const FString& Profile)
 {
     if (!IsAuthority() || bBusy || bShuttingDown || !ValidProfile(Profile)
-        || !PlayerInventory.IsValid() || !PlayerMetabolism.IsValid())
+        || bPendingPlayerRestore || !PlayerInventory.IsValid() || !PlayerMetabolism.IsValid()
+        || PlayerInventory->GetWorld() != GetWorld() || PlayerMetabolism->GetWorld() != GetWorld())
     {
         return false;
     }
@@ -121,6 +127,7 @@ bool UWorldStateManagerSubsystem::SaveAsync(const FString& Profile)
     }
     FCompactWorldSnapshot Snapshot;
     Snapshot.Generation = Generation + 1;
+    Snapshot.Doors.Reserve(DoorOverrides.Num());
     for (const TPair<FGuid, EPersistentDoorState>& Door : DoorOverrides)
     {
         FDoorOverride Entry;
@@ -234,6 +241,13 @@ void UWorldStateManagerSubsystem::HandleLoadedGame(const FString& Slot, int32 Us
 
 void UWorldStateManagerSubsystem::HandleDecodedLoad(bool bValid, FCompactWorldSnapshot Snapshot)
 {
+    if (!IsAuthority())
+    {
+        BestLoaded.Reset();
+        bBusy = bLoading = false;
+        OnLoadCompleted.Broadcast(false, TEXT("Load cancelled after switching to a client world."), 0);
+        return;
+    }
     if (bValid && (!BestLoaded.IsSet() || Snapshot.Generation > BestLoaded.GetValue().Generation))
     {
         BestLoaded = MoveTemp(Snapshot);

@@ -31,6 +31,9 @@ public:
     UPROPERTY(EditAnywhere, Category = "Director")
     TObjectPtr<UCurveFloat> TensionCurve;
 
+    UPROPERTY(EditAnywhere, Category = "Director", meta = (ClampMin = "1", ClampMax = "2"))
+    int32 MaxAlienAgents = 1;
+
     UPROPERTY(EditAnywhere, Category = "Director")
     TSubclassOf<APawn> AlienStalkerClass;
 
@@ -63,6 +66,10 @@ public:
     // Reserve BEFORE activating any external faction agent. Invalid GUID = full.
     UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Director|Admission")
     FGuid RequestAgentSlot(EDirectorAgentKind Kind);
+
+    // All-or-nothing admission for squads.
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Director|Admission")
+    TArray<FGuid> RequestAgentSlots(EDirectorAgentKind Kind, int32 Count);
 
     UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Director|Admission")
     bool ActivateReservedAgent(FGuid Handle, APawn* Agent);
@@ -101,8 +108,10 @@ private:
     double CycleStartTime = 0.0;
     double NextSpawnTime = 0.0;
     double RecoveryUntil = 0.0;
+    bool bOwnsAdmission = false;
 
     bool IsDirectorAuthority() const;
+    void PruneAgentSlots();
     void Evaluate();
     bool SpawnEncounter(EDirectorAgentKind Kind, APawn* FocusPlayer);
     void ApplyAgentWeather(APawn* Agent);

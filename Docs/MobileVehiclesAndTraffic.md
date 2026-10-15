@@ -4,8 +4,8 @@
 
 Enable the Chaos Vehicles plugin. The JackNKill module needs Core, CoreUObject,
 Engine, and ChaosVehicles dependencies. Add EnhancedInput if the controller uses
-Enhanced Input bindings. This repository still has no generated project/module
-files or Unreal engine toolchain; the C++ setup has not been compiled or driven.
+Enhanced Input bindings. Project/module files now exist, but no Unreal engine
+toolchain is available here; the C++ setup has not been compiled or driven.
 
 ## Four-wheel drivable pawn
 

@@ -17,6 +17,7 @@ public:
     bool bBusy = false;
     UFUNCTION(BlueprintPure, Category = "Persistence")
     bool IsLoading() const { return bLoading; }
+    bool IsApplyingPlayerRestore() const { return bApplyingPlayerRestore; }
     UPROPERTY(BlueprintAssignable, Category = "Persistence")
     FPersistenceCompleted OnSaveCompleted;
     UPROPERTY(BlueprintAssignable, Category = "Persistence")
@@ -57,6 +58,7 @@ private:
     bool bLoading = false;
     bool bShuttingDown = false;
     bool bPendingPlayerRestore = false;
+    bool bApplyingPlayerRestore = false;
     TArray<FInventoryStack> LoadedInventory;
     FPlayerMetabolismSnapshot LoadedMetabolism;
 

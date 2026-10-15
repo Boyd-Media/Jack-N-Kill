@@ -27,7 +27,8 @@ public:
     void SubmitBribeResponse(FGuid RequestId, bool bAccept);
 
     // Override on the server: check balance and debit atomically, without latent
-    // work. Default rejects payment. Never accept a client-supplied balance.
+    // work. Default uses the pawn inventory's Credits stack. Never accept a
+    // client-supplied balance.
     UFUNCTION(BlueprintNativeEvent, BlueprintAuthorityOnly, Category = "Public Order|Economy")
     bool TrySpendBribeCredits(int32 Amount);
     virtual bool TrySpendBribeCredits_Implementation(int32 Amount);
@@ -42,6 +43,7 @@ protected:
 private:
     FGuid PendingRequest;
     TWeakObjectPtr<APublicOrderAIController> PendingOfficer;
+    void HandleBribeResponse(FGuid RequestId, bool bAccept);
 
     UFUNCTION(Client, Reliable)
     void ClientShowBribePrompt(FGuid RequestId, int32 Credits, float TimeoutSeconds);

@@ -175,6 +175,7 @@ private:
     double NextLocalRequestTime = 0.0;
     double NextRemoteRequestTime = 0.0;
     uint32 LastPresentedAttackSequence = 0;
+    bool bTraceInProgress = false;
 
     bool HasCombatAuthority() const;
     bool RequestAttackAuthoritative(FName AttackId);

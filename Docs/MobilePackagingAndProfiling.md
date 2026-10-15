@@ -1,8 +1,8 @@
 # Android/iOS packaging and sustained device profiling
 
 Start with Development builds for device profiling, then validate representative
-Shipping builds. This repository still lacks a .uproject, Build.cs files, content
-assets, and platform signing configuration. Commands below are integration
+Shipping builds. Project/module scaffolding exists, but content assets, the
+Unreal SDK, and platform signing configuration are still required. Commands below are integration
 examples, not builds executed for this repository.
 
 ## Zlib asset compression

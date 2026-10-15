@@ -1,5 +1,7 @@
 #include "Framework/PublicOrderPlayerController.h"
 #include "AI/PublicOrderAIController.h"
+#include "Components/LightweightInventoryComponent.h"
+#include "GameFramework/Pawn.h"
 
 bool APublicOrderPlayerController::BeginBribePrompt(APublicOrderAIController* Officer,
     const FGuid& RequestId, int32 Credits, float TimeoutSeconds)
@@ -11,7 +13,14 @@ bool APublicOrderPlayerController::BeginBribePrompt(APublicOrderAIController* Of
     }
     PendingRequest = RequestId;
     PendingOfficer = Officer;
-    ClientShowBribePrompt(RequestId, Credits, TimeoutSeconds);
+    if (GetNetMode() == NM_Standalone)
+    {
+        OnBribePrompt.Broadcast(RequestId, Credits, TimeoutSeconds);
+    }
+    else
+    {
+        ClientShowBribePrompt(RequestId, Credits, TimeoutSeconds);
+    }
     return true;
 }
 
@@ -23,21 +32,40 @@ void APublicOrderPlayerController::CloseBribePrompt(const FGuid& RequestId, bool
     }
     PendingRequest.Invalidate();
     PendingOfficer.Reset();
-    ClientCloseBribePrompt(RequestId, bPaid);
+    if (GetNetMode() == NM_Standalone)
+    {
+        OnBribeClosed.Broadcast(RequestId, bPaid);
+    }
+    else
+    {
+        ClientCloseBribePrompt(RequestId, bPaid);
+    }
 }
 
 void APublicOrderPlayerController::SubmitBribeResponse(FGuid RequestId, bool bAccept)
 {
     if (IsLocalController())
     {
-        ServerSubmitBribeResponse(RequestId, bAccept);
+        if (HasAuthority())
+        {
+            HandleBribeResponse(RequestId, bAccept);
+        }
+        else
+        {
+            ServerSubmitBribeResponse(RequestId, bAccept);
+        }
     }
 }
 
 void APublicOrderPlayerController::ServerSubmitBribeResponse_Implementation(
     FGuid RequestId, bool bAccept)
 {
-    if (!RequestId.IsValid() || PendingRequest != RequestId)
+    HandleBribeResponse(RequestId, bAccept);
+}
+
+void APublicOrderPlayerController::HandleBribeResponse(FGuid RequestId, bool bAccept)
+{
+    if (!HasAuthority() || !RequestId.IsValid() || PendingRequest != RequestId)
     {
         return;
     }
@@ -53,8 +81,9 @@ void APublicOrderPlayerController::ServerSubmitBribeResponse_Implementation(
 
 bool APublicOrderPlayerController::TrySpendBribeCredits_Implementation(int32 Amount)
 {
-    // Connect a real authoritative wallet before enabling successful bribes.
-    return false;
+    const APawn* Player = GetPawn();
+    ULightweightInventoryComponent* Inventory = Player ? Player->FindComponentByClass<ULightweightInventoryComponent>() : nullptr;
+    return HasAuthority() && Amount > 0 && Inventory && Inventory->RemoveItem(TEXT("Credits"), Amount);
 }
 
 void APublicOrderPlayerController::ClientShowBribePrompt_Implementation(

@@ -21,6 +21,7 @@ public:
 private:
     bool bAttackWindowOpen = false;
     bool bSweepInProgress = false;
+    uint32 WindowRevision = 0;
     TSet<TWeakObjectPtr<AActor>> HitActors;
     TArray<FHitResult> SweepResults;
 };

@@ -59,6 +59,11 @@ ActivateReservedAgent. Pending reservations count toward eight and expire after
 five seconds. Humans can occupy at most seven slots, preserving Alien capacity.
 GUID handles prevent stale callbacks from releasing a reused numeric slot.
 
+RequestAgentSlots admits a whole batch or none. The default additional heavy-agent
+limit is one Stalker, configurable to two. Duplicate native Directors are disabled
+at BeginPlay so they cannot expand the world budget independently. A possessed
+agent cannot release its slot before deactivation/unpossession.
+
 The native spawn path reserves before deferred spawning, finishes the pawn, and
 commits that reservation. Failure destroys the candidate and releases the slot.
 Director-spawned pawns have this Director as Owner: their BeginPlay integration
@@ -77,8 +82,8 @@ patrol classes need an authored patrol behavior; spawning a police pawn does not
 create a crime or automatically make it hostile. Bind OnEncounterSpawned for
 patrol route/encounter setup. Native spawning creates one pawn, not a whole squad.
 Squads and the Pro Athletes security system must reserve all their own agents
-through the same Director; atomic multi-slot admission is a further integration
-step rather than separate uncontrolled spawning.
+through the same Director using RequestAgentSlots rather than separate uncontrolled
+spawning. Squad encounter behavior remains an integration task.
 
 Supply loaded ATargetPoint soft references. At most eight candidates are sampled
 per attempt. Points must be at least 40 m from every registered player and within

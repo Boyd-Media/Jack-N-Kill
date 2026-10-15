@@ -4,13 +4,17 @@
 #include "Curves/CurveFloat.h"
 #include "Engine/TargetPoint.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "World/StormWeatherController.h"
+#include "Systems/GameplayRules.h"
 
 AMobileAIDirector::AMobileAIDirector()
 {
     PrimaryActorTick.bCanEverTick = false;
+    Agents.Reserve(8);
+    Players.Reserve(4);
 }
 
 bool AMobileAIDirector::IsDirectorAuthority() const
@@ -25,6 +29,15 @@ void AMobileAIDirector::BeginPlay()
     {
         return;
     }
+    for (TActorIterator<AMobileAIDirector> It(GetWorld()); It; ++It)
+    {
+        if (*It != this && It->bOwnsAdmission)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Duplicate AI Director disabled; use one admission owner per world."));
+            return;
+        }
+    }
+    bOwnsAdmission = true;
     CycleStartTime = GetWorld()->GetTimeSeconds();
     NextSpawnTime = CycleStartTime + 30.0;
     if (IsValid(Weather))
@@ -82,25 +95,50 @@ void AMobileAIDirector::RemovePlayerStatus(APawn* Player)
 
 FGuid AMobileAIDirector::RequestAgentSlot(EDirectorAgentKind Kind)
 {
-    if (!IsDirectorAuthority() || Agents.Num() >= 8)
+    const TArray<FGuid> Handles = RequestAgentSlots(Kind, 1);
+    return Handles.IsEmpty() ? FGuid() : Handles[0];
+}
+
+void AMobileAIDirector::PruneAgentSlots()
+{
+    const double Now = GetWorld()->GetTimeSeconds();
+    Agents.RemoveAll([Now](const FAgentSlot& Entry)
     {
-        return FGuid();
+        return Entry.bReserved ? Now >= Entry.ReservationExpiresAt : !Entry.Agent.IsValid();
+    });
+}
+
+TArray<FGuid> AMobileAIDirector::RequestAgentSlots(EDirectorAgentKind Kind, int32 Count)
+{
+    TArray<FGuid> Handles;
+    if (!IsDirectorAuthority() || !bOwnsAdmission
+        || (Kind != EDirectorAgentKind::AlienStalker && Kind != EDirectorAgentKind::PublicOrderPatrol
+            && Kind != EDirectorAgentKind::OtherHuman))
+    {
+        return Handles;
     }
+    PruneAgentSlots();
     int32 Humans = 0;
     for (const FAgentSlot& Entry : Agents)
     {
         Humans += Entry.Kind != EDirectorAgentKind::AlienStalker ? 1 : 0;
     }
-    if (Kind != EDirectorAgentKind::AlienStalker && Humans >= 7)
+    if (!JNK::Rules::CanReserveAgents(Agents.Num(), Humans, Agents.Num() - Humans, Count,
+        Kind == EDirectorAgentKind::AlienStalker, FMath::Clamp(MaxAlienAgents, 1, 2)))
     {
-        return FGuid();
+        return Handles;
     }
-    FAgentSlot Entry;
-    Entry.Handle = FGuid::NewGuid();
-    Entry.Kind = Kind;
-    Entry.ReservationExpiresAt = GetWorld()->GetTimeSeconds() + 5.0;
-    Agents.Add(Entry);
-    return Entry.Handle;
+    Handles.Reserve(Count);
+    for (int32 Index = 0; Index < Count; ++Index)
+    {
+        FAgentSlot Entry;
+        Entry.Handle = FGuid::NewGuid();
+        Entry.Kind = Kind;
+        Entry.ReservationExpiresAt = GetWorld()->GetTimeSeconds() + 5.0;
+        Agents.Add(Entry);
+        Handles.Add(Entry.Handle);
+    }
+    return Handles;
 }
 
 bool AMobileAIDirector::ActivateReservedAgent(FGuid Handle, APawn* Agent)
@@ -134,6 +172,11 @@ void AMobileAIDirector::ReleaseAgentSlot(FGuid Handle)
     const int32 Index = Agents.IndexOfByPredicate([Handle](const FAgentSlot& Entry) { return Entry.Handle == Handle; });
     if (Index != INDEX_NONE)
     {
+        if (Agents[Index].Agent.IsValid() && Agents[Index].Agent->GetController())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("AI slot release rejected: deactivate/unpossess the agent first."));
+            return;
+        }
         if (Agents[Index].Agent.IsValid())
         {
             Agents[Index].Agent->OnEndPlay.RemoveDynamic(this, &AMobileAIDirector::HandleAgentEndPlay);
@@ -145,10 +188,7 @@ void AMobileAIDirector::ReleaseAgentSlot(FGuid Handle)
 void AMobileAIDirector::Evaluate()
 {
     const double Now = GetWorld()->GetTimeSeconds();
-    Agents.RemoveAll([Now](const FAgentSlot& Entry)
-    {
-        return Entry.bReserved ? Now >= Entry.ReservationExpiresAt : !Entry.Agent.IsValid();
-    });
+    PruneAgentSlots();
     Players.RemoveAll([](const FPlayerStatus& Status) { return !Status.Player.IsValid(); });
     // Controllers can be created after pawn admission; reapply cheaply so new
     // controllers also receive the current storm without another weather event.
@@ -176,8 +216,7 @@ void AMobileAIDirector::Evaluate()
             DesiredTension = 0.0f;
             return;
         }
-        const float Recent = FMath::Exp(-static_cast<float>(Now - Status.LastEncounter) / 30.0f);
-        const float Stress = 0.50f * (1.0f - Status.Health) + 0.30f * (1.0f - Status.Ammo) + 0.20f * Recent;
+        const float Stress = static_cast<float>(JNK::Rules::Stress(Status.Health, Status.Ammo, Now - Status.LastEncounter));
         if (!FocusPlayer || Stress > PlayerStress)
         {
             PlayerStress = Stress;
@@ -292,6 +331,7 @@ void AMobileAIDirector::HandleAgentEndPlay(AActor* Agent, EEndPlayReason::Type R
 
 void AMobileAIDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    bOwnsAdmission = false;
     if (GetWorld())
     {
         GetWorld()->GetTimerManager().ClearTimer(DecisionTimer);

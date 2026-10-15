@@ -53,6 +53,7 @@ void AStalkerAIController::OnPossess(APawn* InPawn)
     {
         return;
     }
+    SetActorTickEnabled(true);
     if (const ACharacter* Character = Cast<ACharacter>(InPawn))
     {
         BaseMovementSpeed = Character->GetCharacterMovement()->MaxWalkSpeed;
@@ -92,12 +93,14 @@ void AStalkerAIController::SetTrackedPlayer(APawn* Player)
 
 void AStalkerAIController::OnUnPossess()
 {
+    SetActorTickEnabled(false);
     if (ACharacter* Character = Cast<ACharacter>(GetPawn()))
     {
         Character->GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed;
     }
     ResetKnowledge();
     TrackedPlayer.Reset();
+    StopMovement();
     Super::OnUnPossess();
 }
 

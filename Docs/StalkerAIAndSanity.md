@@ -2,8 +2,8 @@
 
 ## Integration
 
-Create a UE 5.6+ JackNKill project. Add AIModule, GameplayTasks, and NavigationSystem
-to Build.cs alongside Core, CoreUObject, and Engine. Assign AStalkerAIController
+Open JackNKill.uproject with UE 5.6+. The runtime module declares AIModule,
+GameplayTasks, NavigationSystem, Core, CoreUObject, and Engine. Assign AStalkerAIController
 to the monster character, configure Auto Possess AI, and generate navigation for
 its large capsule. Validate streamed navigation and narrow passages.
 
@@ -125,7 +125,8 @@ parameter during presentation teardown. No middleware plugin API is assumed.
 
 ## Validation
 
-There is no .uproject, engine toolchain, BT/material asset, or device result here.
+Project/build scaffolding exists; the engine toolchain, BT/material assets, and
+device results are unavailable here.
 Compilation/UHT and editor integration remain unverified. Test visible pursuit,
 sight-loss investigation, occluded noise, respawn rebinding, distance intervals,
 navigation for the monster capsule, sanity bounds, wall occlusion, material

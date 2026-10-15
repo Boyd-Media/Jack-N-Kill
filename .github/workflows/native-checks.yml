@@ -1,0 +1,11 @@
+name: Portable gameplay rules
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run production rules with sanitizers
+        run: python3 Tools/run_native_tests.py --sanitize

@@ -20,8 +20,8 @@ movement replication. Dependencies: Core, CoreUObject, Engine, Networking, and
 Sockets, plus existing game-feature dependencies. Configure maps for cooking.
 The subsystem does not require OnlineSubsystem/Steam/EOS or a platform login.
 
-This repository has no .uproject, module Build.cs, Unreal toolchain, authored menu,
-or playable pawn assets. These sources are integration architecture, not a tested
+Project/build scaffolding is supplied. The Unreal toolchain, authored menu,
+and playable pawn assets remain unavailable. These sources are integration architecture, not a tested
 multiplayer build.
 
 ## Main menu Blueprint

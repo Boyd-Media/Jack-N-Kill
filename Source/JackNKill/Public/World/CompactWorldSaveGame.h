@@ -29,11 +29,11 @@ struct FCompactWorldSnapshot
 
 namespace CompactWorldSave
 {
-    constexpr int32 MaxDoors = 16384;
-    constexpr int32 MaxHouses = 4096;
-    constexpr int32 MaxPayloadBytes = 512 * 1024;
+    constexpr int32 MaxDoors = JNK::Rules::MaxDoorRecords;
+    constexpr int32 MaxHouses = JNK::Rules::MaxHouseRecords;
+    constexpr int32 MaxPayloadBytes = JNK::Rules::MaxSavePayloadBytes;
     // Stronger than the requested 5 MB limit, leaving platform wrapper headroom.
-    constexpr int32 MaxSerializedBytes = 1000000;
+    constexpr int32 MaxSerializedBytes = JNK::Rules::MaxSerializedSaveBytes;
     JACKNKILL_API bool Encode(const FCompactWorldSnapshot& Snapshot, TArray<uint8>& Bytes);
     JACKNKILL_API bool Decode(const TArray<uint8>& Bytes, FCompactWorldSnapshot& Snapshot);
 }

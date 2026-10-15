@@ -9,7 +9,7 @@ PlayerController rather than running two PlayerController instances per player.
 The JackNKill module requires Core, CoreUObject, Engine, AIModule, GameplayTasks,
 and NavigationSystem. Add UMG to the module implementing a native widget if needed.
 
-The repository has no generated Unreal project or engine toolchain. Compilation,
+Project/build scaffolding exists, but the Unreal toolchain is unavailable. Compilation,
 UHT, network behavior, UMG assets, arrest implementation, and weapon integration
 remain unverified. These are integration sources, not a complete police system.
 
@@ -58,9 +58,10 @@ Corrupt officer approaches player within 200 cm
         Refused/unaffordable: request hostile combat
 ```
 
-The default price is 500 credits. Override TrySpendBribeCredits on the server to
-atomically check and subtract from the real wallet, returning true only on success.
-It deliberately returns false until an economy is connected. The client never
+The default price is 500 credits. TrySpendBribeCredits atomically removes that
+quantity from the possessed pawn's inventory Credits stack. Override it on the
+server for another wallet; missing inventory or insufficient credits rejects payment.
+The client never
 supplies an amount, balance, or claimed payment result. Consume the request ID
 before calling the wallet to prevent duplicate/reentrant charges. Keep the wallet
 override nonlatent; asynchronous payment needs a separate reserved-funds state.
@@ -71,11 +72,11 @@ the prompt and closure. Client countdowns are cosmetic; server game time decides
 expiry. Refusing, failing payment, exceeding the timer, leaving three times the
 approach distance, or changing suspect possession makes the officer hostile.
 
-Only one prompt per player is permitted. A second simultaneous officer request
-fails rather than creating duplicate payable prompts, and that officer becomes
-hostile in this initial policy. A missing controller bridge also prevents bribery
-and triggers hostility. Configure these cases through encounter coordination if
-you want waiting officers instead. Do not ship with the bridge missing.
+Only one prompt per player is permitted. A second officer retries after one
+second rather than creating duplicate prompts or becoming hostile. A missing
+controller bridge cancels the encounter and logs a warning. Pursuit is bounded
+to 30 seconds by default; arrest/bribe/force handoffs require line of sight.
+Do not ship with the bridge missing. Standalone UI dispatch bypasses RPC calls.
 
 ## Arrest and combat integration
 

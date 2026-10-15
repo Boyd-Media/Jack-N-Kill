@@ -108,7 +108,7 @@ accept client-supplied calories or body weights without gameplay validation.
 
 ## Validation status
 
-The repository has no .uproject or Unreal toolchain. Compilation/UHT, authored
+The project descriptor exists, but no Unreal toolchain is available. Compilation/UHT, authored
 morph assets, and in-engine tests remain pending. Validate missing targets, both
 morphs together, daily rollover, calorie surplus/deficit, activity gain, smoothing
 under accelerated time, save restoration, long-skip policy, exact 0.7 boundaries,

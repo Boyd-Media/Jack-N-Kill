@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "TimerManager.h"
 #include "PublicOrderAIController.generated.h"
 
 class APublicOrderPlayerController;
@@ -48,6 +49,9 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Public Order")
     float ForceRangeCm = 1200.0f;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Public Order", meta = (ClampMin = "1"))
+    float MaxPursuitSeconds = 30.0f;
+
     UPROPERTY(BlueprintAssignable, Category = "Public Order")
     FPublicOrderAction OnArrestRequested;
 
@@ -89,6 +93,8 @@ private:
     FTimerHandle BribeTimer;
     double BribeDeadline = 0.0;
     double NextMoveRetryAt = 0.0;
+    double NextBribeRetryAt = 0.0;
+    double PursuitDeadline = 0.0;
     bool bForceAllowed = false;
 
     void StartBribePrompt();

@@ -118,9 +118,10 @@ Autosave proactively rather than relying solely on app-background shutdown time.
 ## Load and player restoration
 
 Use LoadAsync from a loading/menu state and gate input, inventory transactions,
-and the game clock while IsLoading is true. Door/house mutations are rejected
-during load; external inventory/metabolism producers must obey the same loading
-gate. This prevents a completed load from overwriting new gameplay changes.
+and the game clock while IsLoading is true. Door/house, inventory, and metabolism
+mutations are now rejected during load; only the manager's guarded restore may
+apply snapshots. Gate other gameplay producers too. This prevents a completed
+load from overwriting new gameplay changes.
 
 On success the manager restores world records and fires OnWorldStateRestored.
 If player components are not yet available, it retains the player snapshot until
@@ -136,7 +137,8 @@ not included by this format.
 Added JackNKill.Persistence.CompactRoundTripAndBudget, exercising maximum record
 counts through Unreal SaveGame-to-memory/load-from-memory, item/world ID round-trip,
 all metabolism fields, the one-megabyte budget, and invalid record rejection.
-It remains unrun because this repository has no .uproject or Unreal toolchain.
+It remains unrun because the Unreal toolchain is unavailable; project scaffolding
+is now supplied.
 
 Compile/UHT and run the test, then test asynchronous platform slots, interrupted
 writes and corrupt headers/payloads, fallback generation selection, missing saves,

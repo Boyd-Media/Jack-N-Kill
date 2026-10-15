@@ -9,6 +9,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
+#include "Systems/GameplayRules.h"
 #include "TimerManager.h"
 
 namespace
@@ -215,17 +216,18 @@ void UCombatComponent::AdvanceState()
             return;
         }
         PreviousSampleWS = Transform.GetLocation();
+        const uint32 ExpectedRevision = StateRevision + 1;
         EnterState(ECombatState::Active, CurrentAttack.ActiveSeconds);
+        if (StateRevision == ExpectedRevision)
+        {
+            // Query the opening pose; a short window must not wait a whole frame.
+            TraceActiveHit();
+        }
     }
     else if (State == ECombatState::Active)
     {
-        // Include the last sample, even for windows shorter than one frame.
-        const uint32 Revision = StateRevision;
-        TraceActiveHit();
-        if (Revision == StateRevision)
-        {
-            EnterState(ECombatState::Recovery, CurrentAttack.RecoverySeconds);
-        }
+        // Never compensate a hitch with a damage trace after the live window.
+        EnterState(ECombatState::Recovery, CurrentAttack.RecoverySeconds);
     }
     else if (State == ECombatState::Recovery
         || State == ECombatState::HitStun || State == ECombatState::BlockStun)
@@ -308,10 +310,14 @@ void UCombatComponent::TraceActiveHit()
     UWorld* World = GetWorld();
     AActor* Owner = GetOwner();
     FTransform Transform;
-    if (!HasCombatAuthority() || State != ECombatState::Active || !World || !IsValid(Owner))
+    if (bTraceInProgress || !HasCombatAuthority() || State != ECombatState::Active
+        || !World || !IsValid(Owner)
+        || !JNK::Rules::IsWindowLive(World->GetTimeSeconds(), NetworkState.PhaseStartServerTime,
+            NetworkState.PhaseDuration))
     {
         return;
     }
+    TGuardValue<bool> TraceGuard(bTraceInProgress, true);
     if (!ReadTraceTransform(Transform))
     {
         CancelCombat();

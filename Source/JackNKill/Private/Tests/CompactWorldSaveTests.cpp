@@ -30,12 +30,15 @@ bool FCompactWorldSaveTest::RunTest(const FString& Parameters)
     for (int32 Index = 0; Index < ULightweightInventoryComponent::MaxStacks; ++Index)
     {
         FInventoryStack Stack;
-        Stack.ItemId = FName(*FString::Printf(TEXT("Item_%d"), Index));
+        FString Id = FString::Printf(TEXT("Item_%02d_"), Index);
+        Id += FString::ChrN(JNK::Rules::MaxItemIdBytes - Id.Len(), TEXT('A'));
+        Stack.ItemId = FName(*Id);
         Stack.Quantity = ULightweightInventoryComponent::MaxQuantity;
         Original.Inventory.Add(Stack);
     }
     TArray<uint8> Payload;
     TestTrue(TEXT("Maximum record counts encode"), CompactWorldSave::Encode(Original, Payload));
+    TestEqual(TEXT("Worst-case payload matches bounded record layout"), Payload.Num(), JNK::Rules::WorstCaseSavePayloadBytes);
     UCompactWorldSaveGame* Save = NewObject<UCompactWorldSaveGame>();
     Save->Payload = Payload;
     TArray<uint8> Serialized;

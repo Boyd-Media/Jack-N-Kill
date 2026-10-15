@@ -5,6 +5,8 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Systems/GameplayRules.h"
+#include "World/PersistenceAccess.h"
 
 namespace
 {
@@ -19,9 +21,10 @@ UPlayerMetabolismComponent::UPlayerMetabolismComponent()
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-bool UPlayerMetabolismComponent::CanChangeState() const
+bool UPlayerMetabolismComponent::CanChangeState(bool bRestore) const
 {
-    return IsValid(GetOwner()) && GetOwner()->HasAuthority();
+    return IsValid(GetOwner()) && GetOwner()->HasAuthority()
+        && JNK::CanMutateDuringPersistence(GetWorld(), bRestore);
 }
 
 void UPlayerMetabolismComponent::BeginPlay()
@@ -92,7 +95,7 @@ bool UPlayerMetabolismComponent::AdvanceGameDays(float ElapsedDays)
         const double Step = FMath::Min(Remaining, 1.0 - DayProgress);
         // Exponential smoothing has the same result independent of clock cadence
         // between daily target changes, including accelerated game time.
-        const float Alpha = static_cast<float>(1.0 - FMath::Exp(-0.6931471805599453 * Step / HalfLife));
+        const float Alpha = static_cast<float>(JNK::Rules::SmoothingAlpha(Step, HalfLife));
         Fat = FMath::Clamp(FMath::Lerp(Fat, TargetFat, Alpha), 0.0f, 1.0f);
         Muscular = FMath::Clamp(FMath::Lerp(Muscular, TargetMuscular, Alpha), 0.0f, 1.0f);
         DayProgress += Step;
@@ -136,7 +139,7 @@ void UPlayerMetabolismComponent::ApplyBodyState()
         }
         if (UCharacterMovementComponent* Movement = Character->GetCharacterMovement())
         {
-            const float SprintScale = Fat > 0.7f ? SafeValue(FatSprintMultiplier, 0.75f, 0.1f, 1.0f) : 1.0f;
+            const float SprintScale = static_cast<float>(JNK::Rules::SprintMultiplier(Fat, FatSprintMultiplier));
             Movement->MaxWalkSpeed = bSprintRequested
                 ? SafeValue(BaseSprintSpeed, 650.0f, 0.0f, 3000.0f) * SprintScale
                 : SafeValue(BaseWalkSpeed, 450.0f, 0.0f, 3000.0f);
@@ -144,8 +147,7 @@ void UPlayerMetabolismComponent::ApplyBodyState()
     }
     if (Combat.IsValid())
     {
-        Combat->SetMetabolismDamageMultiplier(Muscular > 0.7f
-            ? SafeValue(MuscularDamageMultiplier, 1.25f, 1.0f, 3.0f) : 1.0f);
+        Combat->SetMetabolismDamageMultiplier(static_cast<float>(JNK::Rules::MeleeMultiplier(Muscular, MuscularDamageMultiplier)));
     }
 }
 
@@ -165,7 +167,7 @@ FPlayerMetabolismSnapshot UPlayerMetabolismComponent::GetSnapshot() const
 
 bool UPlayerMetabolismComponent::RestoreSnapshot(const FPlayerMetabolismSnapshot& Snapshot)
 {
-    if (!CanChangeState() || !FMath::IsFinite(Snapshot.Fat) || !FMath::IsFinite(Snapshot.Muscular)
+    if (!CanChangeState(true) || !FMath::IsFinite(Snapshot.Fat) || !FMath::IsFinite(Snapshot.Muscular)
         || !FMath::IsFinite(Snapshot.TargetFat) || !FMath::IsFinite(Snapshot.TargetMuscular)
         || !FMath::IsFinite(Snapshot.DayProgress) || Snapshot.DayProgress < 0.0f || Snapshot.DayProgress >= 1.0f
         || !FMath::IsFinite(Snapshot.CaloricIntake) || !FMath::IsFinite(Snapshot.StaminaBurn))
@@ -177,6 +179,7 @@ bool UPlayerMetabolismComponent::RestoreSnapshot(const FPlayerMetabolismSnapshot
     TargetFat = FMath::Clamp(Snapshot.TargetFat, 0.0f, 1.0f);
     TargetMuscular = FMath::Clamp(Snapshot.TargetMuscular, 0.0f, 1.0f);
     DayProgress = Snapshot.DayProgress;
+    bSprintRequested = false;
     CaloricIntake = FMath::Clamp(Snapshot.CaloricIntake, 0.0f, 100000.0f);
     StaminaBurn = FMath::Clamp(Snapshot.StaminaBurn, 0.0f, 100000.0f);
     LastAppliedFat = LastAppliedMuscular = -1.0f;

@@ -3,6 +3,7 @@
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Hearing.h"
+#include "Systems/GameplayRules.h"
 
 AStormWeatherController::AStormWeatherController()
 {
@@ -20,13 +21,13 @@ void AStormWeatherController::BeginPlay()
 
 float AStormWeatherController::GetFootstepRadiusScale() const
 {
-    const float Severe = FMath::Clamp((StormIntensity - 0.7f) / 0.3f, 0.0f, 1.0f);
+    const float Severe = static_cast<float>(JNK::Rules::SevereStormFraction(StormIntensity));
     return FMath::Lerp(1.0f, 0.5f, Severe);
 }
 
 float AStormWeatherController::GetStalkerAggression() const
 {
-    const float Severe = FMath::Clamp((StormIntensity - 0.7f) / 0.3f, 0.0f, 1.0f);
+    const float Severe = static_cast<float>(JNK::Rules::SevereStormFraction(StormIntensity));
     return FMath::Lerp(1.0f, 1.5f, Severe);
 }
 
