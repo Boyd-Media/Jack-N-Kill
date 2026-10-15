@@ -56,3 +56,9 @@ stress-driven encounters, shared admission limits, and storm gameplay modifiers.
 
 See [inventory and world persistence](Docs/InventoryAndWorldPersistence.md) for
 compact door/house/player saves, asynchronous storage, and bounded inventory.
+
+See [World Partition and HLODs](Docs/WorldPartitionAndHLOD.md) for 128 m gameplay
+cells and distant skyline representations.
+
+See [mobile packaging and profiling](Docs/MobilePackagingAndProfiling.md) for
+Zlib asset compression, APK/IPA workflows, and device/thermal measurements.
